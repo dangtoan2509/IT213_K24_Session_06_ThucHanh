@@ -1,4 +1,4 @@
-package com.thuchanh.model;
+package com.thuchanh.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -9,13 +9,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Appointment {
+public class BookingResultDto {
     private String bookingCode;
-    private String customerName;
-    private String customerPhone;
-    private String doctorName;
-    private String serviceName;
-    private String appointmentDateTime;
     private String status;
+    private String message;
 }
-
