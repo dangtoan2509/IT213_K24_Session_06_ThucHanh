@@ -13,14 +13,16 @@ public class AiConfig {
 
     @Bean
     public ChatMemory chatMemory() {
-        return new MessageWindowChatMemory(new InMemoryChatMemoryRepository(), 20);
+        return MessageWindowChatMemory.builder()
+                .maxMessages(20)
+                .build();
     }
 
     @Bean
     public ChatClient chatClient(ChatClient.Builder builder, ChatMemory chatMemory) {
         return builder
                 .defaultSystem(SystemPromptConstant.SMILE_CARE_PROMPT)
-                .defaultAdvisors(new MessageChatMemoryAdvisor(chatMemory))
+                .defaultAdvisors(MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .build();
     }
 }
