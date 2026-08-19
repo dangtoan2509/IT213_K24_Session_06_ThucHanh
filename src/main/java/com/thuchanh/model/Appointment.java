@@ -18,3 +18,4 @@ public class Appointment {
     private String appointmentDateTime;
     private String status;
 }
+

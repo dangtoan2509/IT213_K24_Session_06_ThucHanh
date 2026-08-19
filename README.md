@@ -5,7 +5,7 @@
 
 ---
 
-## I. Phân Tích Bài Toán & Kiến Trúc Kỹ Thuật
+## I. Mô Hình Chia Việc Code Song Song (4 File Độc Lập)
 
 ### 1. 5 Nghiệp Vụ Chính (Use Cases)
 
