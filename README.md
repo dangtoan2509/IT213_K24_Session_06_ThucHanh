@@ -41,68 +41,60 @@ Hệ thống sử dụng cơ chế Function Calling của LLM thông qua annotat
 
 ---
 
-## II. Phân Công Nhiệm Vụ Cho 4 Thành Viên
+## II. Mô Hình Chia Việc Code Song Song (4 File Độc Lập)
 
-Mỗi thành viên phụ trách một mảng nghiệp vụ chuyên biệt trên một Git branch độc lập:
-
-```
-                      ┌──────────────────────────────────────┐
-                      │            [Toàn - Leader]           │
-                      │ Core Architecture, ChatClient/Memory │
-                      └──────────────────┬───────────────────┘
-                                         │
-        ┌────────────────────────────────┼────────────────────────────────┐
-        ▼                                ▼                                ▼
- ┌───────────────┐              ┌─────────────────┐              ┌─────────────────┐
- │    [Quang]    │              │     [Dương]     │              │     [Hoàng]     │
- │ Data Layer &  │              │Transaction Tools│              │ UI, Testing &   │
- │ Lookup Tools  │              │ (Booking/Cancel)│              │ Multi-turn QA   │
- └───────────────┘              └─────────────────┘              └─────────────────┘
+```text
+[Phút 0 - 5] Toàn khởi tạo Base Project & Push Git
+                     │
+    ┌────────────────┼────────────────┬────────────────┐
+    ▼                ▼                ▼                ▼
+ [Toàn - Leader]   [Quang]          [Dương]          [Hoàng]
+ ChatClient &      Lookup Tools     Booking Tools    Cancel/Reschedule
+ ChatMemory        (@Tool tra cứu)  (@Tool đặt lịch) & Business Tools
+ (AiConfig.java)   (LookupTools)    (BookingTools)   (ManageTools)
 ```
 
-### 1. Toàn (Leader) — Kiến Trúc Hệ Thống, ChatClient & ChatMemory
-* **Nhánh Git:** `feature/toan-core-chatclient-memory`
-* **Nhiệm vụ chi tiết:**
-    * Khởi tạo dự án Spring Boot, cấu hình Spring AI (kết nối LLM model).
-    * Xây dựng **System Prompt** chuẩn mực định hình phong cách, nghiệp vụ cho trợ lý SmileCare.
-    * Cấu hình bean `ChatMemory` (sử dụng `MessageWindowChatMemory`) và gắn vào `ChatClient` thông qua `MessageChatMemoryAdvisor`.
-    * Khởi tạo bean `ChatClient` dùng chung (`@Bean ChatClient`) gắn sẵn default system prompt và advisors.
-    * Xây dựng REST API endpoint chính: `POST /api/chat` tiếp nhận `conversationId` và `message`.
-    * Quản lý Git repository: review Pull Request, giải quyết merge conflict và chốt bản phát hành.
+## III. Phân Công Chi Tiết 4 Thành Viên
 
-### 2. Quang — Tầng Dữ Liệu & Nhóm `@Tool` Tra Cứu (UC1, UC2, UC3)
-* **Nhánh Git:** `feature/quang-data-lookup-tools`
-* **Nhiệm vụ chi tiết:**
-    * Thiết kế Model/Entity dữ liệu: `Doctor`, `DentalService`, `Appointment` (sử dụng In-memory Storage hoặc H2 Database).
-    * Viết class `DataInitializer` để seed dữ liệu ban đầu (3-5 bác sĩ, 5-7 dịch vụ nha khoa, một số lịch hẹn mẫu).
-    * Xây dựng 3 `@Tool` tra cứu:
-        1. `searchServices(keyword)`
-        2. `getDoctorsBySpecialty(specialty)`
-        3. `checkAvailableSlots(doctorName, date)`
-    * Khai báo đầy đủ annotation `@Tool` và `@ToolParam` với description chi tiết, rõ ràng để LLM nhận diện chính xác.
+### 1. Toàn (Leader) — Cấu hình Spring AI, ChatClient & ChatMemory
+**File phụ trách:** `AiConfig.java`, `ChatController.java`
 
-### 3. Dương — Nhóm `@Tool` Giao Dịch & Xử Lý Nghiệp Vụ (UC4, UC5)
-* **Nhánh Git:** `feature/duong-booking-tools`
-* **Nhiệm vụ chi tiết:**
-    * Xây dựng 2 `@Tool` giao dịch:
-        1. `bookAppointment(...)`: Kiểm tra trùng lịch của bác sĩ, lưu thông tin đặt lịch, sinh mã `BOOK-XXXX`.
-        2. `cancelOrReschedule(...)`: Tra cứu mã lịch hẹn, cập nhật trạng thái hoặc đổi giờ khám.
-    * Xử lý validation nghiệp vụ: cảnh báo lịch trùng, kiểm tra giờ khám hợp lệ trong khung giờ làm việc của phòng khám.
-    * Chuẩn hóa dữ liệu trả về dạng JSON/DTO rõ ràng để LLM đọc và phản hồi tự nhiên cho khách.
+**Nhiệm vụ:**
+* Tạo base project (Spring Boot + Spring AI).
+* Viết System Prompt quy định vai trò SmileCare và yêu cầu LLM: Tự hỏi lại nếu thiếu Tên/SĐT/Giờ khám, chỉ gọi Tool khi đủ thông tin.
+* Cấu hình ChatMemory (in-memory) gắn qua Advisor vào ChatClient.
+* Viết Controller tiếp nhận `POST /api/chat` với param: `conversationId`, `userMessage`.
 
-### 4. Hoàng — Giao Diện Test, Kịch Bản Multi-turn & QA / README
-* **Nhánh Git:** `feature/hoang-chat-ui-and-e2e-tests`
-* **Nhiệm vụ chi tiết:**
-    * Xây dựng giao diện chat Web đơn giản (HTML/CSS/JS) cho phép nhập tùy chỉnh `conversationId` để test nhiều phiên hội thoại độc lập.
-    * Xây dựng **3 bộ kịch bản kiểm thử Multi-turn chi tiết** kèm log kết quả (Prompt $
-      ightarrow$ Tool Call $
-      ightarrow$ Model Response).
-    * Thực hiện kiểm thử các trường hợp đặc biệt (Edge Cases): khách đổi ý giữa chừng, nhập sai định dạng ngày giờ, cung cấp thông tin lắt léo.
-    * Viết tài liệu `README.md`: hướng dẫn cài đặt, chạy ứng dụng, cấu hình API key, bảng phân công vai trò và mô tả kịch bản test.
+### 2. Quang — Nhóm `@Tool` Tra Cứu (Lookup Tools)
+**File phụ trách:** `LookupTools.java`, `MockData.java`
+
+**Nhiệm vụ:**
+* Tạo dữ liệu mẫu trong RAM: danh sách Bác sĩ (chuyên khoa, kinh nghiệm) và Dịch vụ (tên, giá).
+* Viết 2 `@Tool`:
+    * `@Tool searchServices(keyword)`: Tra cứu dịch vụ và bảng giá.
+    * `@Tool getDoctorsBySpecialty(specialty)`: Tìm bác sĩ theo chuyên môn.
+
+### 3. Dương — Nhóm `@Tool` Đặt Lịch & Kiểm Tra Khung Giờ
+**File phụ trách:** `BookingTools.java`
+
+**Nhiệm vụ:**
+* Tạo danh sách `List<Appointment>` lưu lịch hẹn tạm thời trên RAM.
+* Viết 2 `@Tool`:
+    * `@Tool checkAvailableSlots(doctorName, date)`: Trả về các slot giờ còn trống (VD: 09:00, 14:00, 16:00).
+    * `@Tool bookAppointment(customerName, customerPhone, doctorName, serviceName, dateTime)`: Kiểm tra không trùng giờ, lưu lịch, trả về mã đặt lịch (VD: BOOK-101).
+
+### 4. Hoàng — Nhóm `@Tool` Quản Lý & Đổi / Hủy Lịch
+**File phụ trách:** `AppointmentManagementTools.java`
+
+**Nhiệm vụ:**
+* Phối hợp cùng kho dữ liệu của Dương để xử lý các nghiệp vụ cập nhật lịch.
+* Viết 2 `@Tool`:
+    * `@Tool getAppointmentDetails(bookingCode)`: Tra cứu lại thông tin lịch đã đặt theo mã.
+    * `@Tool cancelOrReschedule(bookingCode, action, newDateTime)`: Hủy lịch hoặc cập nhật sang giờ khám mới nếu còn trống.
 
 ---
 
-## III. Quy Trình Phối Hợp Nhóm & Git Workflow
+## IV. Quy Trình Phối Hợp Nhóm & Git Workflow
 
 Nhóm áp dụng mô hình Git Flow tiêu chuẩn để đảm bảo minh bạch lịch sử đóng góp:
 
@@ -128,7 +120,7 @@ Nhóm áp dụng mô hình Git Flow tiêu chuẩn để đảm bảo minh bạch
 
 ---
 
-## IV. 3 Kịch Bản Kiểm Thử Multi-turn Mẫu
+## V. 3 Kịch Bản Kiểm Thử Multi-turn Mẫu
 
 ### Kịch bản 1: Tư vấn & Đặt lịch khi cung cấp thiếu thông tin (Multi-turn Slot Filling)
 * **Lượt 1 (Khách):** *"Chào phòng khám, tôi muốn đặt lịch nhổ răng khôn."*
@@ -153,27 +145,22 @@ Nhóm áp dụng mô hình Git Flow tiêu chuẩn để đảm bảo minh bạch
 
 ---
 
-## V. Cấu Trúc Thư Mục / Package Dự Án Chuẩn
+## VI. Cấu Trúc Thư Mục / Package Dự Án Chuẩn
 
 ```text
-src/main/java/com/smilecare/bot/
+src/main/java/com/thuchanh/
 ├── config/
-│   ├── AiConfig.java                 // Toàn: Cấu hình ChatClient, ChatMemory, Advisor
-│   └── SystemPromptConstant.java     // Toàn: System prompt chi tiết
+│   ├── AiConfig.java                   // Toàn: Cấu hình ChatClient, ChatMemory, Advisor
+│   └── SystemPromptConstant.java       // Toàn: System prompt chi tiết
 ├── controller/
-│   └── ChatController.java           // Toàn: REST API (/api/chat)
-├── model/
-│   ├── Doctor.java                   // Quang
-│   ├── DentalService.java            // Quang
-│   └── Appointment.java              // Dương
-├── repository/
-│   ├── ClinicRepository.java         // Quang: Quản lý dữ liệu in-memory / JPA
-│   └── DataInitializer.java          // Quang: Seed dữ liệu mẫu
+│   └── ChatController.java             // Toàn: REST API (/api/chat)
 ├── tools/
-│   ├── LookupTools.java              // Quang: @Tool tra cứu dịch vụ, bác sĩ, lịch trống
-│   └── BookingTools.java             // Dương: @Tool đặt, đổi, hủy lịch khám
+│   ├── MockData.java                   // Quang: Dữ liệu mẫu danh sách bác sĩ, dịch vụ
+│   ├── LookupTools.java                // Quang: @Tool tra cứu dịch vụ, bác sĩ
+│   ├── BookingTools.java               // Dương: @Tool đặt lịch, kiểm tra lịch trống
+│   └── AppointmentManagementTools.java // Hoàng: @Tool quản lý, đổi, hủy lịch
 └── dto/
-    ├── ChatRequest.java              // DTO nhận conversationId và message
-    ├── ChatResponse.java             // DTO trả kết quả chat
-    └── BookingResultDto.java         // DTO kết quả giao dịch lịch hẹn
+    ├── ChatRequest.java              
+    ├── ChatResponse.java             
+    └── BookingResultDto.java         
 ```
